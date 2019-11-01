@@ -1,0 +1,55 @@
+{% extends "main.html" %} {% block content %} {% include "header.html" %}
+
+<div class="row divider green">
+  <div class="col-md-12"></div>
+</div>
+<div class="row banner menu">
+  <div class="col-md-11 col-md-offset-1 padding-none sub-banner">
+    <h1>
+      {{ tvshow.name }}
+    </h1>
+    <div class="banner-body">
+      <p>{{ tvshow.summary }}</p>
+      <small class="text-muted">Rating : {{ tvshow.rating }}</small>
+    </div>
+    <div class="creator-container">
+      <img src="{{ creator.picture }}" class="img-fluid rounded-circle" />
+      <p>{{ creator.name }}</p>
+    </div>
+  </div>
+</div>
+<div class="row padding-top padding-bottom">
+  <div class="col-md-1"></div>
+  <div class="col-md-11 padding-none"></div>
+  <div class="col-md-7"></div>
+</div>
+<div class="row">
+  <div class="col-md-12">
+    {% with messages = get_flashed_messages() %} {% if messages %}
+    <ul>
+      {% for message in messages %}
+      <li>
+        <strong> {{ message }} </strong>
+      </li>
+      {% endfor %}
+    </ul>
+    {% endif %} {% endwith %}
+  </div>
+</div>
+{% if episodes !=[] %}
+<div class="row">
+  {% for i in episodes %}
+  <div class=" col-md-6 card text-center">
+    <img src="{{ i.picture }}" class="card-img-top" alt="..." />
+    <div class="card-body">
+      <h5 class="card-title">{{ i.name }}</h5>
+      <p class="card-text">{{ i.summary }}</p>
+      <p class="card-text">
+        <small class="text-muted d-inline">Season: {{ i.season }}</small>
+        <small class="text-muted d-inline">Episode: {{ i.number }}</small>
+      </p>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %} {% endblock %}

@@ -1,0 +1,55 @@
+{% extends "main.html" %} {% block content %} {% include "header.html" %}
+<div class="row divider green">
+  <div class="col-md-12"></div>
+</div>
+<div class="row banner menu">
+  <div class="col-md-11 col-md-offset-1 padding-none">
+    <h1>New Tvshow</h1>
+  </div>
+</div>
+<div class="row">
+  <div class="col-md-6 col-md-offset-1 padding-top">
+    <form action="#" method="post">
+      <div class="form-group">
+        <label for="name">Name:</label>
+        <input
+          type="text"
+          class="form-control"
+          name="name"
+          pleceholder="name of tvshow"
+        />
+
+        <label for="summary">Summary:</label>
+        <textarea
+          class="form-control"
+          maxlength="250"
+          rows="3"
+          name="summary"
+          pleceholder="summary of tvshow"
+        ></textarea>
+
+        <label for="rating">Rating:</label>
+        <input
+          type="number"
+          class="form-control"
+          name="rating"
+          pleceholder="rating of tvshow"
+        />
+
+        <label for="picture">Picture:</label>
+        <input
+          type="text"
+          class="form-control"
+          name="picture"
+          pleceholder="picture of tvshow"
+        />
+        <div class="padding-bottom"></div>
+        <button type="submit" class="btn btn-primary" id="submit" type="submit">
+          <span class="glyphicon glyphicon-cutlery" aria-hidden="true"></span
+          >Create
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

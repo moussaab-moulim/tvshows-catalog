@@ -1,0 +1,43 @@
+{% extends "main.html" %}
+{% block content %}
+{% include "header.html" %}
+	<div class="row divider green">
+		<div class="col-md-12"></div>
+	</div>
+	<div class="row banner menu">
+		<div class="col-md-11 col-md-offset-1 padding-none">
+			<h1>Edit Episode</h1>
+		</div>
+	</div>
+	<div class="row">
+		<div class="col-md-6 col-md-offset-1 padding-top">
+			<form action="#" method = "post">
+				<div class="form-group">
+					<label for="name">Name:</label>
+					<input type ="text" maxlength="100" class="form-control" name="name" value="{{episode.name }}">
+
+					<label for="summary">Summary:</label>
+					<textarea class="form-control" maxlength="250" rows="3" name="summary">{{episode.summary}}</textarea>
+
+					<label for="season">season:</label>
+					<input type ="text" maxlength="10" class="form-control" name="season" value="{{episode.season}}">
+						
+					<label for="number">episode number:</label>
+					<input type ="text" maxlength="10" class="form-control" name="number" value="{{episode.number}}">
+					
+					<label for="picture">Picture:</label>
+					<input type="text" name="picture" class="form-control" value="{{episode.picture}}">
+
+					<div style="margin: 20px;"></div>
+					
+					<button  type="submit" class="btn btn-primary" id="submit" type="submit">
+					<span class="glyphicon glyphicon-ok" aria-hidden="true"></span>Save</button>
+					<a href = "{{url_for('showTvshows')}}">
+						<button class="btn btn-warning ">
+						<span class="glyphicon glyphicon-remove" aria-hidden="true"></span> Cancel</button>
+					</a>
+				</div>
+			</form>
+		</div>
+	</div>
+{% endblock %}

@@ -1,0 +1,17 @@
+<div class="row">
+  {% for tvshow in tvshows %}
+  <div class=" col-md-3 card text-center">
+    <a href="{{url_for('showEpisodes', tvshow_id= tvshow.id)}}">
+      <img src="{{ tvshow.picture }}" class="card-img-top" alt="..." />
+      <div class="card-body">
+        <h5 class="card-title">{{ tvshow.name }}</h5>
+
+        <p class="card-text">
+          <small class="text-muted">Rating : {{ tvshow.rating }}</small>
+        </p>
+      </div>
+    </a>
+  </div>
+
+  {% endfor %}
+</div>
