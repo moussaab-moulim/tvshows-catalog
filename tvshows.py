@@ -24,8 +24,10 @@ session = DBSession()
 
 
 # Create dummy user
+pic='https://pbs.twimg.com/profile_images/2671170543/' \
+    '18debd694829ed78203a5a36dd364160_400x400.png'
 User1 = User(name="jhon doe", email="jhondoe@gmail.com",
-             picture='https://pbs.twimg.com/profile_images/2671170543/18debd694829ed78203a5a36dd364160_400x400.png')
+             picture=pic)
 session.add(User1)
 session.commit()
 # getting data from public api to populate our database
@@ -45,8 +47,9 @@ for i in range(1,11):
             picturet = "https://via.placeholder.com/453x667"
         else:
             picturet = results['image'].values()[1]
+            summ=results['summary'].replace('<p>', '').replace('</p>','')
         tvshow = Tvshow(user_id=2, name=results['name'],
-                        summary=results['summary'].replace('<p>', '').replace('</p>',''),
+                        summary=summ,
                         rating=results['rating'].values()[0],
                         picture=picturet)
         session.add(tvshow)
@@ -62,8 +65,9 @@ for i in range(1,11):
                     picture = "https://via.placeholder.com/750x400"
                 else:
                     picture = episode['image'].values()[1]
+                    summ=results['summary'].replace('<p>','').replace('</p>','')
                 tvEpisode = Episode(user_id=2, name=episode['name'],
-                                    summary=results['summary'].replace('<p>', '').replace('</p>',''),
+                                    summary=summ,
                                     number=episode['number'],
                                     season=episode['season'],
                                     picture=picture,

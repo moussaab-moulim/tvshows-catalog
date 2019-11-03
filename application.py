@@ -1,4 +1,8 @@
-from flask import Flask, render_template, request, redirect,jsonify, url_for, flash
+from functools import wraps
+
+from flask import Flask, render_template, request, \
+    redirect, jsonify, url_for, flash
+
 app = Flask(__name__)
 
 from sqlalchemy import create_engine, asc
@@ -12,13 +16,16 @@ from oauth2client.client import flow_from_clientsecrets
 from oauth2client.client import FlowExchangeError
 import httplib2
 import json
-from flask import  make_response
+from flask import make_response
 import requests
 
-CLIENT_ID = json.loads(open('client_secrets.json','r').read())['web']['client_id']
 
 
-#Connect to Database and create database session
+
+CLIENT_ID = json.loads(open('client_secrets.json', 'r')
+                       .read())['web']['client_id']
+
+# Connect to Database and create database session
 engine = create_engine('sqlite:///tvshows.db')
 Base.metadata.bind = engine
 
@@ -26,13 +33,24 @@ DBSession = sessionmaker(bind=engine)
 session = DBSession()
 
 
-#JSON APIs to view tv shows Information
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'username' in login_session:
+            return f(*args, **kwargs)
+        else:
+            flash("You are not allowed to access there")
+            return redirect('/login')
+
+    return decorated_function
+
+# JSON APIs to view tv shows Information
 @app.route('/tvshows/<int:tvshow_id>/episodes/JSON')
 def tvsowEpisodeJSON(tvshow_id):
     DBSession = sessionmaker(bind=engine)
     session = DBSession()
-    tvshow = session.query(Tvshow).filter_by(id = tvshow_id).one()
-    episodes = session.query(Episode).filter_by(tvshow_id = tvshow_id).all()
+    tvshow = session.query(Tvshow).filter_by(id=tvshow_id).one()
+    episodes = session.query(Episode).filter_by(tvshow_id=tvshow_id).all()
     return jsonify(Episode=[i.serialize for i in episodes])
 
 
@@ -40,31 +58,36 @@ def tvsowEpisodeJSON(tvshow_id):
 def episodeJSON(tvshow_id, episode_id):
     DBSession = sessionmaker(bind=engine)
     session = DBSession()
-    episode = session.query(Episode).filter_by(id = episode_id).one()
-    return jsonify(episode = episode.serialize)
+    episode = session.query(Episode).filter_by(id=episode_id).one()
+    return jsonify(episode=episode.serialize)
+
 
 @app.route('/tvshows/JSON')
 def tvshowJSON():
     DBSession = sessionmaker(bind=engine)
     session = DBSession()
     tvshows = session.query(Tvshow).all()
-    return jsonify(tvshows= [r.serialize for r in tvshows])
+    return jsonify(tvshows=[r.serialize for r in tvshows])
 
-#JSON APIs to view users Information
+
+# JSON APIs to view users Information
 @app.route('/users/JSON')
 def usersJSON():
     DBSession = sessionmaker(bind=engine)
     session = DBSession()
     users = session.query(User).all()
-    return jsonify(users= [r.serialize for r in users])
+    return jsonify(users=[r.serialize for r in users])
+
+
 @app.route('/users/<int:user_id>/JSON')
 def userJSON(user_id):
     DBSession = sessionmaker(bind=engine)
     session = DBSession()
-    user = session.query(User).filter_by(id = user_id).one()
-    return jsonify(user = user.serialize)
+    user = session.query(User).filter_by(id=user_id).one()
+    return jsonify(user=user.serialize)
 
-#Show all tvshows
+
+# Show all tvshows
 @app.route('/')
 @app.route('/tvshows/')
 def showTvshows():
@@ -72,18 +95,23 @@ def showTvshows():
     session = DBSession()
     tvshows = session.query(Tvshow).order_by(asc(Tvshow.name))
     if 'username' not in login_session:
-        return render_template('publictvshows.html', tvshows = tvshows)
+        return render_template('publictvshows.html', tvshows=tvshows)
     else:
-        return render_template('tvshows.html', tvshows = tvshows)
+        return render_template('tvshows.html', tvshows=tvshows)
 
-#Create a new tvshow
-@app.route('/tvshows/new/', methods=['GET','POST'])
+
+# Create a new tvshow
+@app.route('/tvshows/new/', methods=['GET', 'POST'])
+@login_required
 def newTvshow():
-    verifyUser()
+
     DBSession = sessionmaker(bind=engine)
     session = DBSession()
     if request.method == 'POST':
-        newTvshow = Tvshow(name = request.form['name'],rating = request.form['rating'],picture = request.form['picture'],user_id=login_session['user_id'])
+        newTvshow = Tvshow(name=request.form['name'],
+                           rating=request.form['rating'],
+                           picture=request.form['picture'],
+                           user_id=login_session['user_id'])
         session.add(newTvshow)
         flash('New Tvshow %s Successfully Created ' % newTvshow.name)
         session.commit()
@@ -91,93 +119,121 @@ def newTvshow():
     else:
         return render_template('newtvshow.html')
 
-#Edit a tvshows
-@app.route('/tvshows/<int:tvshow_id>/edit/', methods = ['GET', 'POST'])
+
+# Edit a tvshows
+@app.route('/tvshows/<int:tvshow_id>/edit/', methods=['GET', 'POST'])
+@login_required
 def editTvshow(tvshow_id):
-    verifyUser()
+
     DBSession = sessionmaker(bind=engine)
     session = DBSession()
-    editedTvshow = session.query(Tvshow).filter_by(id = tvshow_id).one()
+    editedTvshow = session.query(Tvshow).filter_by(id=tvshow_id).one()
     if editedTvshow.user_id != login_session['user_id']:
-        return "<script>function myFunction() {alert('You are not authorized to edit this tvhshow. Please create your own tvshow in order to edit.');}</script><body onload='myFunction()''>"
+        return "<script>function myFunction(){alert('You are not authorized " \
+               "to edit this tvhshow. Please create your own tvshow in order" \
+               " to edit.');}</script><body onload='myFunction()''> "
     if request.method == 'POST':
-        if (request.form['name'] or request.form['summary'] or request.form['rating'] or request.form['picture']) :
-            if request.form['name'] :
+        if request.form['name'] or request.form['summary'] or \
+                request.form['rating'] or request.form['picture']:
+            if request.form['name']:
                 editedTvshow.name = request.form['name']
-            if  request.form['summary'] :
+            if request.form['summary']:
                 editedTvshow.summary = request.form['summary']
-            if  request.form['rating'] :
+            if request.form['rating']:
                 editedTvshow.rating = request.form['rating']
-            if  request.form['picture'] :
+            if request.form['picture']:
                 editedTvshow.picture = request.form['picture']
             session.commit()
             flash('Tvshow Successfully Edited %s' % editedTvshow.name)
-            return redirect(url_for('showEpisodes',tvshow_id = tvshow_id))
+            return redirect(url_for('showEpisodes', tvshow_id=tvshow_id))
     else:
-        return render_template('edittvshow.html', tvshow = editedTvshow)
+        return render_template('edittvshow.html', tvshow=editedTvshow)
 
 
-#Delete a tvshow
-@app.route('/tvshows/<int:tvshow_id>/delete/', methods = ['GET','POST'])
+# Delete a tvshow
+@app.route('/tvshows/<int:tvshow_id>/delete/', methods=['GET', 'POST'])
+@login_required
 def deleteTvshow(tvshow_id):
-    verifyUser()
+
     DBSession = sessionmaker(bind=engine)
     session = DBSession()
-    tvshowToDelete = session.query(Tvshow).filter_by(id = tvshow_id).one()
+    tvshowToDelete = session.query(Tvshow).filter_by(id=tvshow_id).one()
     if tvshowToDelete.user_id != login_session['user_id']:
-        return "<script>function myFunction() {alert('You are not authorized to delete this tvshow. Please create your own tvshow in order to delete.');}</script><body onload='myFunction()''>"
+        return "<script>function myFunction() {alert('You are not authorized " \
+               "to delete this tvshow. Please create " \
+               "your own tvshow in order to delete.');}</script>" \
+               "<body onload='myFunction()''> "
     if request.method == 'POST':
         session.delete(tvshowToDelete)
         flash('%s Successfully Deleted' % tvshowToDelete.name)
         session.commit()
-        return redirect(url_for('showTvshows', tvshow_id = tvshow_id))
+        return redirect(url_for('showTvshows', tvshow_id=tvshow_id))
     else:
-        return render_template('deletetvshow.html',tvshow = tvshowToDelete)
+        return render_template('deletetvshow.html', tvshow=tvshowToDelete)
 
-#Show a tvshow episodes
+
+# Show a tvshow episodes
 @app.route('/tvshows/<int:tvshow_id>/')
 @app.route('/tvshows/<int:tvshow_id>/episodes/')
 def showEpisodes(tvshow_id):
     DBSession = sessionmaker(bind=engine)
     session = DBSession()
-    tvshow = session.query(Tvshow).filter_by(id = tvshow_id).one()
+    tvshow = session.query(Tvshow).filter_by(id=tvshow_id).one()
     creator = getUserInfo(tvshow.user_id)
-    episodes = session.query(Episode).filter_by(tvshow_id = tvshow_id).all()
-    if 'username' not in login_session or creator.id != login_session['user_id']:
-        return render_template('publicepisodes.html', episodes=episodes, tvshow=tvshow, creator = creator)
+    episodes = session.query(Episode).filter_by(tvshow_id=tvshow_id).all()
+    if 'username' not in login_session or \
+            creator.id != login_session['user_id']:
+
+        return render_template('publicepisodes.html', episodes=episodes,
+                               tvshow=tvshow, creator=creator)
     else:
-        return render_template('episodes.html', episodes = episodes, tvshow = tvshow, creator = creator)
+        return render_template('episodes.html', episodes=episodes,
+                               tvshow=tvshow, creator=creator)
 
 
-
-#Create a new episode
-@app.route('/tvshows/<int:tvshow_id>/episodes/new/',methods=['GET','POST'])
+# Create a new episode
+@app.route('/tvshows/<int:tvshow_id>/episodes/new/', methods=['GET', 'POST'])
+@login_required
 def newEpisode(tvshow_id):
-    verifyUser()
+
     DBSession = sessionmaker(bind=engine)
     session = DBSession()
-    tvshow = session.query(Tvshow).filter_by(id = tvshow_id).one()
+    tvshow = session.query(Tvshow).filter_by(id=tvshow_id).one()
     if login_session['user_id'] != tvshow.user_id:
-        return "<script>function myFunction() {alert('You are not authorized to add episodes to this tvshow. Please create your own tvshow in order to add episodes.');}</script><body onload='myFunction()''>"
+        return "<script>function myFunction() {alert('You are not authorized" \
+               " to add episodes to this tvshow. Please " \
+               "create your own tvshow in order to add episodes.');}" \
+               "</script><body onload='myFunction()''> "
     if request.method == 'POST':
-        episode = Episode(name = request.form['name'], summary = request.form['summary'], number = request.form['number'], season = request.form['season'],picture = request.form['picture'], tvshow_id = tvshow_id,user_id=tvshow.user_id)
+        episode = Episode(name=request.form['name'],
+                          summary=request.form['summary'],
+                          number=request.form['number'],
+                          season=request.form['season'],
+                          picture=request.form['picture'],
+                          tvshow_id=tvshow_id, user_id=tvshow.user_id)
         session.add(episode)
         session.commit()
         flash('New Episode %s Successfully Created' % (episode.name))
-        return redirect(url_for('showEpisodes', tvshow_id = tvshow_id))
+        return redirect(url_for('showEpisodes', tvshow_id=tvshow_id))
     else:
-        return render_template('newepisode.html', tvshow_id = tvshow_id)
+        return render_template('newepisode.html', tvshow_id=tvshow_id)
 
-#Edit an Episode
-@app.route('/tvshows/<int:tvshow_id>/episodes/<int:episode_id>/edit', methods=['GET','POST'])
+
+# Edit an Episode
+@app.route('/tvshows/<int:tvshow_id>/episodes/<int:episode_id>/edit',
+           methods=['GET', 'POST'])
+@login_required
 def editEpisode(tvshow_id, episode_id):
-    verifyUser()
+
     DBSession = sessionmaker(bind=engine)
     session = DBSession()
-    editedEpisode = session.query(Episode).filter_by(id = episode_id).one()
-    tvshow = session.query(Tvshow).filter_by(id = tvshow_id).one()
+    editedEpisode = session.query(Episode).filter_by(id=episode_id).one()
+    tvshow = session.query(Tvshow).filter_by(id=tvshow_id).one()
     if login_session['user_id'] != tvshow.user_id:
-        return "<script>function myFunction() {alert('You are not authorized to edit episodes of this tvshow. Please create your own tvshow in order to edit episodes.');}</script><body onload='myFunction()''>"
+        return "<script>function myFunction() {alert('You are not authorized" \
+               " to edit episodes of this tvshow. Please " \
+               "create your own tvshow in order to edit " \
+               "episodes.');}</script><body onload='myFunction()''> "
     if request.method == 'POST':
         if request.form['name']:
             editedEpisode.name = request.form['name']
@@ -191,36 +247,43 @@ def editEpisode(tvshow_id, episode_id):
             editedEpisode.course = request.form['picture']
         session.commit()
         flash('episode Successfully Edited')
-        return redirect(url_for('showEpisodes', tvshow_id = tvshow_id))
+        return redirect(url_for('showEpisodes', tvshow_id=tvshow_id))
     else:
-        return render_template('editepisode.html', tvshow_id = tvshow_id, episode_id = episode_id, episode = editedEpisode)
+        return render_template('editepisode.html', tvshow_id=tvshow_id,
+                               episode_id=episode_id, episode=editedEpisode)
 
 
-#Delete an episode
-@app.route('/tvshow/<int:tvshow_id>/episodes/<int:episode_id>/delete', methods = ['GET','POST'])
-def deleteEpisode(tvshow_id,episode_id):
-    verifyUser()
+# Delete an episode
+@app.route('/tvshow/<int:tvshow_id>/episodes/<int:episode_id>/delete',
+           methods=['GET', 'POST'])
+@login_required
+def deleteEpisode(tvshow_id, episode_id):
+
     DBSession = sessionmaker(bind=engine)
     session = DBSession()
-    tvshow = session.query(Tvshow).filter_by(id = tvshow_id).one()
-    episodeToDelete = session.query(Episode).filter_by(id = episode_id).one()
+    tvshow = session.query(Tvshow).filter_by(id=tvshow_id).one()
+    episodeToDelete = session.query(Episode).filter_by(id=episode_id).one()
     if login_session['user_id'] != tvshow.user_id:
-        return "<script>function myFunction() {alert('You are not authorized to delete episodes from this tvshow. Please create your own tvshow in order to delete episodes.');}</script><body onload='myFunction()''>"
+        return "<script>function myFunction() {alert('You are not authorized" \
+               " to delete episodes from this tvshow. " \
+               "Please create your own tvshow in order to delete " \
+               "episodes.');}</script><body onload='myFunction()''> "
     if request.method == 'POST':
         session.delete(episodeToDelete)
         session.commit()
         flash('episode Successfully Deleted')
-        return redirect(url_for('showEpisodes', tvshow_id = tvshow_id))
+        return redirect(url_for('showEpisodes', tvshow_id=tvshow_id))
     else:
-        return render_template('deleteepisode.html', episode = episodeToDelete)
-
+        return render_template('deleteepisode.html', episode=episodeToDelete)
 
 
 @app.route('/login')
 def showLogin():
-    state=''.join(random.choice(string.ascii_uppercase + string.digits) for x in range(32))
-    login_session['state']=state
-    return render_template('login.html', STATE = state)
+    state = ''.join(random.choice(string.ascii_uppercase + string.digits)
+                    for x in range(32))
+    login_session['state'] = state
+    return render_template('login.html', STATE=state)
+
 
 @app.route('/gconnect', methods=['POST'])
 def gconnect():
@@ -274,8 +337,8 @@ def gconnect():
     stored_access_token = login_session.get('access_token')
     stored_gplus_id = login_session.get('gplus_id')
     if stored_access_token is not None and gplus_id == stored_gplus_id:
-        response = make_response(json.dumps('Current user is already connected.'),
-                                 200)
+        response = make_response(
+            json.dumps('Current user is already connected.'), 200)
         response.headers['Content-Type'] = 'application/json'
         return response
 
@@ -298,30 +361,35 @@ def gconnect():
     user_id = getUserID(login_session['email'])
     if not user_id:
         user_id = createUser(login_session)
-    login_session['user_id']=user_id
+    login_session['user_id'] = user_id
     output = ''
     output += '<h1>Welcome, '
     output += login_session['username']
     output += '!</h1>'
     output += '<img src="'
     output += login_session['picture']
-    output += ' " style = "width: 300px; height: 300px;border-radius: 150px;-webkit-border-radius: 150px;-moz-border-radius: 150px;"> '
+    output += '" style = "width: 300px; height: 300px;border-radius: ' \
+              '150px;-webkit-border-radius: ' \
+              '150px;-moz-border-radius: 150px;"> '
     flash("you are now logged in as %s" % login_session['username'])
     print "done!"
     return output
+
 
 @app.route('/gdisconnect')
 def gdisconnect():
     access_token = login_session.get('access_token')
     if access_token is None:
         print 'Access Token is None'
-        response = make_response(json.dumps('Current user not connected.'), 401)
+        response = make_response(json.dumps('Current user not connected.'),
+                                 401)
         response.headers['Content-Type'] = 'application/json'
         return response
     print 'In gdisconnect access token is %s', access_token
     print 'User name is: '
     print login_session['username']
-    url = 'https://accounts.google.com/o/oauth2/revoke?token=%s' % login_session['access_token']
+    url = 'https://accounts.google.com/o/oauth2/revoke?token=%s' \
+          % login_session['access_token']
     print url
     h = httplib2.Http()
     result = h.request(url, 'GET')[0]
@@ -337,9 +405,11 @@ def gdisconnect():
         response.headers['Content-Type'] = 'application/json'
         return response
     else:
-        response = make_response(json.dumps('Failed to revoke token for given user.', 400))
+        response = make_response(json.dumps(
+            'Failed to revoke token for given user.', 400))
         response.headers['Content-Type'] = 'application/json'
         return response
+
 
 @app.route('/fbconnect', methods=['POST'])
 def fbconnect():
@@ -350,16 +420,16 @@ def fbconnect():
     access_token = request.data
     print "access token received %s " % access_token
 
-
     app_id = json.loads(open('fb_client_secrets.json', 'r').read())[
         'web']['app_id']
     app_secret = json.loads(
         open('fb_client_secrets.json', 'r').read())['web']['app_secret']
-    url = 'https://graph.facebook.com/oauth/access_token?grant_type=fb_exchange_token&client_id=%s&client_secret=%s&fb_exchange_token=%s' % (
-        app_id, app_secret, access_token)
+    url = 'https://graph.facebook.com/oauth/access_token?grant_type=' \
+          'fb_exchange_token&client_id=%s&client_secret=%s' \
+          '&fb_exchange_token=%s' % (
+              app_id, app_secret, access_token)
     h = httplib2.Http()
     result = h.request(url, 'GET')[1]
-
 
     # Use token to get user info from API
     userinfo_url = "https://graph.facebook.com/v4.0/me"
@@ -387,7 +457,8 @@ def fbconnect():
     login_session['access_token'] = token
 
     # Get user picture
-    url = 'https://graph.facebook.com/v4.0/me/picture?access_token=%s&redirect=0&height=200&width=200' % token
+    url = 'https://graph.facebook.com/v4.0/me/picture?access_token=' \
+          '%s&redirect=0&height=200&width=200' % token
     h = httplib2.Http()
     result = h.request(url, 'GET')[1]
     data = json.loads(result)
@@ -407,7 +478,9 @@ def fbconnect():
     output += '!</h1>'
     output += '<img src="'
     output += login_session['picture']
-    output += ' " style = "width: 300px; height: 300px;border-radius: 150px;-webkit-border-radius: 150px;-moz-border-radius: 150px;"> '
+    output += '" style = "width: 300px; height: 300px;border-radius:' \
+              ' 150px;-webkit-border-radius: ' \
+              '150px;-moz-border-radius: 150px;"> '
 
     flash("Now logged in as %s" % login_session['username'])
     return output
@@ -418,12 +491,13 @@ def fbdisconnect():
     facebook_id = login_session['facebook_id']
     # The access token must me included to successfully logout
     access_token = login_session['access_token']
-    url = 'https://graph.facebook.com/%s/permissions?access_token=%s' % (facebook_id,access_token)
+    url = 'https://graph.facebook.com/%s/permissions?access_token=%s' \
+          % (facebook_id, access_token)
     h = httplib2.Http()
     result = h.request(url, 'DELETE')[1]
 
-
     return "you have been logged out"
+
 
 # Disconnect based on provider
 @app.route('/disconnect')
@@ -452,9 +526,13 @@ def verifyUser():
     if 'username' not in login_session:
         return redirect('/login')
 
+
+
+
+
 def createUser(login_session):
     newUser = User(name=login_session['username'], email=login_session[
-                   'email'], picture=login_session['picture'])
+        'email'], picture=login_session['picture'])
     session.add(newUser)
     session.commit()
     user = session.query(User).filter_by(email=login_session['email']).one()
@@ -473,11 +551,12 @@ def getUserID(email):
     try:
         user = session.query(User).filter_by(email=email).one()
         return user.id
-    except:
+    except Exception as e:
+        print (e.args)
         return None
 
 
 if __name__ == '__main__':
-  app.secret_key = 'super_secret_key'
-  app.debug = True
-  app.run(host = '0.0.0.0', port = 5000)
+    app.secret_key = 'super_secret_key'
+    app.debug = True
+    app.run(host='0.0.0.0', port=5000)
