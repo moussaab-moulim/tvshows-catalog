@@ -5,14 +5,14 @@ from sqlalchemy import create_engine, asc
 from sqlalchemy.orm import sessionmaker
 from database_setup import Base, Tvshow, Episode, User
 from flask import session as login_session
-import random, string
+import random
+import string
 from oauth2client.client import flow_from_clientsecrets
 from oauth2client.client import FlowExchangeError
 import httplib2
 import json
 from flask import make_response
 import requests
-
 
 app = Flask(__name__)
 
@@ -37,6 +37,7 @@ def login_required(f):
             return redirect('/login')
 
     return decorated_function
+
 
 # JSON APIs to view tv shows Information
 @app.route('/tvshows/<int:tvshow_id>/episodes/JSON')
@@ -98,7 +99,6 @@ def showTvshows():
 @app.route('/tvshows/new/', methods=['GET', 'POST'])
 @login_required
 def newTvshow():
-
     DBSession = sessionmaker(bind=engine)
     session = DBSession()
     if request.method == 'POST':
@@ -118,7 +118,6 @@ def newTvshow():
 @app.route('/tvshows/<int:tvshow_id>/edit/', methods=['GET', 'POST'])
 @login_required
 def editTvshow(tvshow_id):
-
     DBSession = sessionmaker(bind=engine)
     session = DBSession()
     editedTvshow = session.query(Tvshow).filter_by(id=tvshow_id).one()
@@ -148,12 +147,12 @@ def editTvshow(tvshow_id):
 @app.route('/tvshows/<int:tvshow_id>/delete/', methods=['GET', 'POST'])
 @login_required
 def deleteTvshow(tvshow_id):
-
     DBSession = sessionmaker(bind=engine)
     session = DBSession()
     tvshowToDelete = session.query(Tvshow).filter_by(id=tvshow_id).one()
     if tvshowToDelete.user_id != login_session['user_id']:
-        return "<script>function myFunction() {alert('You are not authorized " \
+        return "<script>function myFunction()" \
+               " {alert('You are not authorized " \
                "to delete this tvshow. Please create " \
                "your own tvshow in order to delete.');}</script>" \
                "<body onload='myFunction()''> "
@@ -189,7 +188,6 @@ def showEpisodes(tvshow_id):
 @app.route('/tvshows/<int:tvshow_id>/episodes/new/', methods=['GET', 'POST'])
 @login_required
 def newEpisode(tvshow_id):
-
     DBSession = sessionmaker(bind=engine)
     session = DBSession()
     tvshow = session.query(Tvshow).filter_by(id=tvshow_id).one()
@@ -218,7 +216,6 @@ def newEpisode(tvshow_id):
            methods=['GET', 'POST'])
 @login_required
 def editEpisode(tvshow_id, episode_id):
-
     DBSession = sessionmaker(bind=engine)
     session = DBSession()
     editedEpisode = session.query(Episode).filter_by(id=episode_id).one()
@@ -252,7 +249,6 @@ def editEpisode(tvshow_id, episode_id):
            methods=['GET', 'POST'])
 @login_required
 def deleteEpisode(tvshow_id, episode_id):
-
     DBSession = sessionmaker(bind=engine)
     session = DBSession()
     tvshow = session.query(Tvshow).filter_by(id=tvshow_id).one()
@@ -427,16 +423,16 @@ def fbconnect():
 
     # Use token to get user info from API
     userinfo_url = "https://graph.facebook.com/v4.0/me"
-    '''
-        Due to the formatting for the result from the server token exchange we have to
-        split the token first on commas and select the first index which gives us the key : value
-        for the server access token then we split it on colons to pull out the actual token value
-        and replace the remaining quotes with nothing so that it can be used directly in the graph
-        api calls
-    '''
+    '''Due to the formatting for the result from the server token exchange
+    we have to split the token first on commas and select the first index
+    which gives us the key : value for the server access token then we split
+    it on colons to pull out the actual token value and replace the
+    remaining quotes with nothing so that it can be used directly in the
+    graph api calls '''
     token = result.split(',')[0].split(':')[1].replace('"', '')
 
-    url = 'https://graph.facebook.com/v4.0/me?access_token=%s&fields=name,id,email' % token
+    url = 'https://graph.facebook.com/v4.0/' \
+          'me?access_token=%s&fields=name,id,email' % token
     h = httplib2.Http()
     result = h.request(url, 'GET')[1]
     # print "url sent for API access:%s"% url
@@ -447,7 +443,7 @@ def fbconnect():
     login_session['email'] = data["email"]
     login_session['facebook_id'] = data["id"]
 
-    # The token must be stored in the login_session in order to properly logout
+    # The token must be stored in the login_session to properly logout
     login_session['access_token'] = token
 
     # Get user picture
@@ -521,9 +517,6 @@ def verifyUser():
         return redirect('/login')
 
 
-
-
-
 def createUser(login_session):
     newUser = User(name=login_session['username'], email=login_session[
         'email'], picture=login_session['picture'])
@@ -546,7 +539,7 @@ def getUserID(email):
         user = session.query(User).filter_by(email=email).one()
         return user.id
     except Exception as e:
-        print (e.args)
+        print(e.args)
         return None
 
 

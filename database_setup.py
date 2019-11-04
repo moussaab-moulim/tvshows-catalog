@@ -32,7 +32,7 @@ class Tvshow(Base):
     name = Column(String(250), nullable=False)
     summary = Column(String(250))
     rating = Column(String(3))
-    picture=Column(String(250))
+    picture = Column(String(250))
     user_id = Column(Integer, ForeignKey('user.id'))
     user = relationship(User)
 
@@ -67,7 +67,7 @@ class Episode(Base):
         """Return object data in easily serializeable format"""
         return {
             'id': self.id,
-            'show':self.tvshow.name,
+            'show': self.tvshow.name,
             'name': self.name,
             'summary': self.summary,
 
